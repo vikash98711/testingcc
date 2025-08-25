@@ -1,13 +1,15 @@
-
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
+import 'bootstrap/dist/css/bootstrap.min.css';
 
-const socket = io("https://testingcs.vercel.app"); // change to backend URL in prod
+const socket = io("https://testingcs.vercel.app");
 
 function App() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
-  const [user, setUser] = useState("");
+  const [user, setUser] = useState("");       // final joined user
+  const [nameInput, setNameInput] = useState(""); // input state
+  const msgEndRef = useRef(null);
 
   useEffect(() => {
     socket.on("messages:init", (msgs) => setMessages(msgs));
@@ -21,8 +23,15 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    msgEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   const join = () => {
-    if (user.trim()) socket.emit("user:join", user);
+    if (nameInput.trim()) {
+      setUser(nameInput); // set final user name
+      socket.emit("user:join", nameInput);
+    }
   };
 
   const sendMessage = () => {
@@ -33,28 +42,67 @@ function App() {
   };
 
   return (
-    <div style={{ padding: 20 }}>
+    <div className="container-fluid bg-dark text-light d-flex align-items-center justify-content-center vh-100">
       {!user ? (
-        <div>
-          <input placeholder="Enter name" onChange={(e) => setUser(e.target.value)} />
-          <button onClick={join}>Join</button>
+        <div className="card bg-secondary p-4 shadow" style={{ width: "300px" ,overflowY:"scroll"}}>
+          <h4 className="text-center mb-3">Enter Your Name</h4>
+          <input
+            className="form-control mb-3"
+            placeholder="Your name"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+          />
+          <button onClick={join} className="btn btn-primary w-100">
+            Join Chat
+          </button>
         </div>
       ) : (
-        <div>
-          <h2>Welcome, {user}</h2>
-          <div style={{ height: 300, overflowY: "auto", border: "1px solid gray", marginBottom: 10 }}>
+        <div className="card bg-secondary shadow" style={{ width: "100%", maxWidth: "500px", height: "90vh" }}>
+          {/* Header */}
+          <div className="card-header bg-primary text-white text-center">
+            Welcome, {user}
+          </div>
+
+          {/* Messages */}
+          <div className="card-body overflow-auto" style={{ flex: 1 }}>
             {messages.map((m) => (
-              <div key={m.id}>
-                <b>{m.user}</b>: {m.text} <small>({new Date(m.ts).toLocaleTimeString()})</small>
+              <div
+                key={m.id}
+                className={`d-flex mb-2 ${
+                  m.user === user ? "justify-content-end" : "justify-content-start"
+                }`}
+              >
+                <div
+                  className={`p-2 rounded ${
+                    m.user === user ? "bg-primary text-white" : "bg-light text-dark"
+                  }`}
+                  style={{ maxWidth: "75%" }}
+                >
+                  <div>{m.text}</div>
+                  <small className="d-block text-muted" style={{ fontSize: "0.7rem" }}>
+                    {m.user} • {new Date(m.ts).toLocaleTimeString()}
+                  </small>
+                </div>
               </div>
             ))}
+            <div ref={msgEndRef}></div>
           </div>
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          />
-          <button onClick={sendMessage}>Send</button>
+
+          {/* Input */}
+          <div className="card-footer">
+            <div className="input-group">
+              <input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                placeholder="Type a message..."
+                className="form-control"
+              />
+              <button onClick={sendMessage} className="btn btn-success">
+                Send
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
